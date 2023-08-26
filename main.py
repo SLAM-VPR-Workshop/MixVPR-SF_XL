@@ -4,7 +4,8 @@ from pytorch_lightning.callbacks import Callback, ModelCheckpoint
 from torch.optim import lr_scheduler, optimizer
 import utils
 
-from dataloaders.GSVCitiesDataloader import GSVCitiesDataModule
+# from dataloaders.GSVCitiesDataloader import GSVCitiesDataModule
+from dataloaders.SFXLDataLoader import SFXLDataModule
 from models import helper
 
 
@@ -255,7 +256,7 @@ class VPRModel(pl.LightningModule):
 if __name__ == "__main__":
     pl.utilities.seed.seed_everything(seed=190223, workers=True)
 
-    datamodule = GSVCitiesDataModule(
+    datamodule = SFXLDataModule(
         batch_size=120,
         img_per_place=4,
         min_img_per_place=4,
@@ -270,6 +271,22 @@ if __name__ == "__main__":
             "msls_val",
         ],  # pitts30k_val, pitts30k_test, msls_val
     )
+    
+    # datamodule = GSVCitiesDataModule(
+    #     batch_size=120,
+    #     img_per_place=4,
+    #     min_img_per_place=4,
+    #     shuffle_all=False,  # shuffle all images or keep shuffling in-city only
+    #     random_sample_from_each_place=True,
+    #     image_size=(320, 320),
+    #     num_workers=28,
+    #     show_data_stats=True,
+    #     val_set_names=[
+    #         "pitts30k_val",
+    #         "pitts30k_test",
+    #         "msls_val",
+    #     ],  # pitts30k_val, pitts30k_test, msls_val
+    # )
 
     # examples of backbones
     # resnet18, resnet50, resnet101, resnet152,

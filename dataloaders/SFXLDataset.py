@@ -7,10 +7,11 @@ from PIL import Image
 from PIL import ImageFile
 import torchvision.transforms as T
 from collections import defaultdict
-import glob
+from glob import glob
 
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
+BASE_PATH = "../data/datasets/SF_XL/processed/train"
 
 
 def read_images_paths(dataset_folder, get_abs_path=False):
@@ -62,11 +63,10 @@ def read_images_paths(dataset_folder, get_abs_path=False):
     return images_paths
 
 
-class TrainDataset(torch.utils.data.Dataset):
+class SFXLDataset(torch.utils.data.Dataset):
     def __init__(
         self,
-        args,
-        dataset_folder: str,
+        dataset_folder: str = BASE_PATH,
         M: int = 10,
         alpha: int = 30,
         min_images_per_partition: int = 10,
@@ -86,7 +86,6 @@ class TrainDataset(torch.utils.data.Dataset):
         self.M = M
         self.alpha = alpha
         self.dataset_folder = dataset_folder
-        self.augmentation_device = args.augmentation_device
         self.num_samples = num_samples
 
         # dataset_name should be either "processed", "small" or "raw", if you're using SF-XL
@@ -103,47 +102,31 @@ class TrainDataset(torch.utils.data.Dataset):
 
         self.images_per_partition = torch.load(filename)
         self.partition_ids = list(self.images_per_partition.keys())
-
-        if self.augmentation_device == "cpu":
-            self.transform = T.Compose(
-                [
-                    T.ColorJitter(
-                        brightness=args.brightness,
-                        contrast=args.contrast,
-                        saturation=args.saturation,
-                        hue=args.hue,
-                    ),
-                    T.RandomResizedCrop(
-                        [512, 512],
-                        scale=[1 - args.random_resized_crop, 1],
-                        antialias=True,
-                    ),
-                    T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-                ]
-            )
+        self.img_list = []
+        for val in self.images_per_partition.values():
+            self.img_list.extend(val)
 
     @staticmethod
     def open_image(path):
         return Image.open(path).convert("RGB")
 
-    def __getitem__(self, partition_num: int):
+    def __getitem__(self, index: int):
         # Pick num_samples random images from this partition.
-        partition_id = self.partition_ids[partition_num]
+        image_chosen = self.img_list[index]
+        image_metadata = image_chosen.split("@")
+        utmeast_utmnorth_heading = (image_metadata[1], image_metadata[2], image_metadata[9])
+        partition_id = SFXLDataset.get__partition_id(*utmeast_utmnorth_heading, self.M, self.alpha)
+        
         selected_image_paths = random.sample(
             self.images_per_partition[partition_id], self.num_samples
         )
-
-        images_metadatas = [p.split("@") for p in selected_image_paths]
-        # field 1 is UTM east, field 2 is UTM north, field 9 is heading
-        utmeast_utmnorth_heading = [(m[1], m[2], m[9]) for m in images_metadatas]
-        utmeast_utmnorth_heading = np.array(utmeast_utmnorth_heading).astype(np.float32)
 
         image_tensors = []
 
         for image_path in selected_image_paths:
             image_path = os.path.join(self.dataset_folder, image_path)
             try:
-                pil_image = TrainDataset.open_image(image_path)
+                pil_image = SFXLDataset.open_image(image_path)
             except Exception as e:
                 logging.info(
                     f"ERROR image {image_path} couldn't be opened, it might be corrupted."
@@ -158,14 +141,12 @@ class TrainDataset(torch.utils.data.Dataset):
             if self.augmentation_device == "cpu":
                 tensor_image = self.transform(tensor_image)
 
-            image_tensors.append(
-                tensor_image.unsqueeze(0)
-            )  # Increase the dimension by adding an extra axis
+            image_tensors.append(tensor_image)  # Increase the dimension by adding an extra axis
 
         # Stack all the image tensors along the new axis
-        stacked_image_tensors = torch.cat(image_tensors, dim=0)
+        stacked_image_tensors = torch.stack(image_tensors)
 
-        return stacked_image_tensors, utmeast_utmnorth_heading
+        return stacked_image_tensors, torch.tensor(partition_id).repeat(self.num_samples)
 
     def get_images_num(self) -> int:
         """Return the number of images within the dataset."""
@@ -215,7 +196,7 @@ class TrainDataset(torch.utils.data.Dataset):
 
         logging.debug("For each image, get partition to which it belongs")
         partition_id = [
-            TrainDataset.get__partition_id(*m, M, alpha)
+            SFXLDataset.get__partition_id(*m, M, alpha)
             for m in utmeast_utmnorth_heading
         ]
 

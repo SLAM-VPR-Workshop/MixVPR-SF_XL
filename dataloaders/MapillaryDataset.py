@@ -7,7 +7,7 @@ from torch.utils.data import Dataset
 # make sure the path where the mapillary_sls validation dataset resides on your computer is correct.
 # the folder named train_val should reside in DATASET_ROOT path (that's the only folder you need from mapillary_sls)
 # I hardcoded the groundtruth for image to image evaluation, otherwise it would take ages to run the groundtruth script at each epoch.
-DATASET_ROOT = "../datasets/msls_val/"
+DATASET_ROOT = "../data/datasets/Mapillary"
 
 path_obj = Path(DATASET_ROOT)
 if not path_obj.exists():

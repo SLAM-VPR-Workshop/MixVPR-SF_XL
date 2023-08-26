@@ -2,7 +2,7 @@ import pytorch_lightning as pl
 from torch.utils.data.dataloader import DataLoader
 from torchvision import transforms as T
 
-from dataloaders.GSVCitiesDataset import GSVCitiesDataset
+from dataloaders.SFXLDataset import SFXLDataset
 from . import PittsburgDataset
 from . import MapillaryDataset
 
@@ -12,34 +12,8 @@ IMAGENET_MEAN_STD = {"mean": [0.485, 0.456, 0.406], "std": [0.229, 0.224, 0.225]
 
 VIT_MEAN_STD = {"mean": [0.5, 0.5, 0.5], "std": [0.5, 0.5, 0.5]}
 
-TRAIN_CITIES = [
-    "Bangkok",
-    "BuenosAires",
-    "LosAngeles",
-    "MexicoCity",
-    "OSL",
-    "Rome",
-    "Barcelona",
-    "Chicago",
-    "Madrid",
-    "Miami",
-    "Phoenix",
-    "TRT",
-    "Boston",
-    "Lisbon",
-    "Medellin",
-    "Minneapolis",
-    "PRG",
-    "WashingtonDC",
-    "Brussels",
-    "London",
-    "Melbourne",
-    "Osaka",
-    "PRS",
-]
 
-
-class GSVCitiesDataModule(pl.LightningDataModule):
+class SFXLDataModule(pl.LightningDataModule):
     def __init__(
         self,
         batch_size=32,
@@ -49,7 +23,6 @@ class GSVCitiesDataModule(pl.LightningDataModule):
         image_size=(480, 640),
         num_workers=4,
         show_data_stats=True,
-        cities=TRAIN_CITIES,
         mean_std=IMAGENET_MEAN_STD,
         batch_sampler=None,
         random_sample_from_each_place=True,
@@ -64,7 +37,6 @@ class GSVCitiesDataModule(pl.LightningDataModule):
         self.num_workers = num_workers
         self.batch_sampler = batch_sampler
         self.show_data_stats = show_data_stats
-        self.cities = cities
         self.mean_dataset = mean_std["mean"]
         self.std_dataset = mean_std["std"]
         self.random_sample_from_each_place = random_sample_from_each_place
@@ -137,12 +109,11 @@ class GSVCitiesDataModule(pl.LightningDataModule):
                 self.print_stats()
 
     def reload(self):
-        self.train_dataset = GSVCitiesDataset(
-            cities=self.cities,
-            img_per_place=self.img_per_place,
-            min_img_per_place=self.min_img_per_place,
-            random_sample_from_each_place=self.random_sample_from_each_place,
-            transform=self.train_transform,
+        self.train_dataset = SFXLDataset(
+            M = 10,
+            alpha = 30,
+            min_images_per_partition = 10,
+            num_samples = self.img_per_place,
         )
 
     def train_dataloader(self):
@@ -164,7 +135,6 @@ class GSVCitiesDataModule(pl.LightningDataModule):
         table.align["Data"] = "l"
         table.align["Value"] = "l"
         table.header = False
-        table.add_row(["# of cities", f"{len(TRAIN_CITIES)}"])
         table.add_row(["# of places", f"{self.train_dataset.__len__()}"])
         table.add_row(["# of images", f"{self.train_dataset.total_nb_images}"])
         print(table.get_string(title="Training Dataset"))
