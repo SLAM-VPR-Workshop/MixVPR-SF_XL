@@ -110,10 +110,11 @@ class SFXLDataModule(pl.LightningDataModule):
 
     def reload(self):
         self.train_dataset = SFXLDataset(
-            M = 10,
-            alpha = 30,
-            min_images_per_partition = 10,
-            num_samples = self.img_per_place,
+            M=10,
+            alpha=30,
+            min_images_per_partition=self.min_img_per_place,
+            num_samples=self.img_per_place,
+            transform=self.train_transform,
         )
 
     def train_dataloader(self):
@@ -136,7 +137,7 @@ class SFXLDataModule(pl.LightningDataModule):
         table.align["Value"] = "l"
         table.header = False
         table.add_row(["# of places", f"{self.train_dataset.__len__()}"])
-        table.add_row(["# of images", f"{self.train_dataset.total_nb_images}"])
+        table.add_row(["# of images", f"{self.train_dataset.get_images_num()}"])
         print(table.get_string(title="Training Dataset"))
         print()
 

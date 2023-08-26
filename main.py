@@ -263,7 +263,7 @@ if __name__ == "__main__":
         shuffle_all=False,  # shuffle all images or keep shuffling in-city only
         random_sample_from_each_place=True,
         image_size=(320, 320),
-        num_workers=28,
+        num_workers=8,
         show_data_stats=True,
         val_set_names=[
             "pitts30k_val",
@@ -271,7 +271,7 @@ if __name__ == "__main__":
             "msls_val",
         ],  # pitts30k_val, pitts30k_test, msls_val
     )
-    
+
     # datamodule = GSVCitiesDataModule(
     #     batch_size=120,
     #     img_per_place=4,

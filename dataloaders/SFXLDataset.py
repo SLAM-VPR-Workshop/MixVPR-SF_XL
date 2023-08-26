@@ -13,6 +13,12 @@ from glob import glob
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 BASE_PATH = "../data/datasets/SF_XL/processed/train"
 
+default_transform = T.Compose(
+    [
+        T.ToTensor(),
+        T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ]
+)
 
 def read_images_paths(dataset_folder, get_abs_path=False):
     """Find images within 'dataset_folder' and return their relative paths as a list.
@@ -70,6 +76,7 @@ class SFXLDataset(torch.utils.data.Dataset):
         M: int = 10,
         alpha: int = 30,
         min_images_per_partition: int = 10,
+        transform=default_transform,
         num_samples: int = 4,
     ):
         """
@@ -87,6 +94,7 @@ class SFXLDataset(torch.utils.data.Dataset):
         self.alpha = alpha
         self.dataset_folder = dataset_folder
         self.num_samples = num_samples
+        self.transform = transform
 
         # dataset_name should be either "processed", "small" or "raw", if you're using SF-XL
         dataset_name = os.path.basename(dataset_folder)
@@ -101,7 +109,9 @@ class SFXLDataset(torch.utils.data.Dataset):
             )
 
         self.images_per_partition = torch.load(filename)
-        self.partition_ids = list(self.images_per_partition.keys())
+        partition_ids = set(self.images_per_partition.keys())
+        self.partition_labels = dict(zip(list(partition_ids), range(len(partition_ids))))
+
         self.img_list = []
         for val in self.images_per_partition.values():
             self.img_list.extend(val)
@@ -114,9 +124,16 @@ class SFXLDataset(torch.utils.data.Dataset):
         # Pick num_samples random images from this partition.
         image_chosen = self.img_list[index]
         image_metadata = image_chosen.split("@")
-        utmeast_utmnorth_heading = (image_metadata[1], image_metadata[2], image_metadata[9])
-        partition_id = SFXLDataset.get__partition_id(*utmeast_utmnorth_heading, self.M, self.alpha)
-        
+        utmeast_utmnorth_heading = (
+            image_metadata[1],
+            image_metadata[2],
+            image_metadata[9],
+        )
+        utmeast_utmnorth_heading = np.array(utmeast_utmnorth_heading).astype(np.float64)
+        partition_id = SFXLDataset.get__partition_id(
+            *utmeast_utmnorth_heading, self.M, self.alpha
+        )
+
         selected_image_paths = random.sample(
             self.images_per_partition[partition_id], self.num_samples
         )
@@ -133,20 +150,19 @@ class SFXLDataset(torch.utils.data.Dataset):
                 )
                 raise e
 
-            tensor_image = T.functional.to_tensor(pil_image)
-            assert tensor_image.shape == torch.Size(
-                [3, 512, 512]
-            ), f"Image {image_path} should have shape [3, 512, 512] but has {tensor_image.shape}."
+            if self.transform is not None:
+                pil_image = self.transform(pil_image)
 
-            if self.augmentation_device == "cpu":
-                tensor_image = self.transform(tensor_image)
-
-            image_tensors.append(tensor_image)  # Increase the dimension by adding an extra axis
+            image_tensors.append(
+                pil_image
+            )  # Increase the dimension by adding an extra axis
 
         # Stack all the image tensors along the new axis
         stacked_image_tensors = torch.stack(image_tensors)
 
-        return stacked_image_tensors, torch.tensor(partition_id).repeat(self.num_samples)
+        return stacked_image_tensors, torch.tensor(
+            self.partition_labels[partition_id]
+        ).repeat(self.num_samples)
 
     def get_images_num(self) -> int:
         """Return the number of images within the dataset."""
@@ -154,7 +170,7 @@ class SFXLDataset(torch.utils.data.Dataset):
 
     def __len__(self) -> int:
         """Return the number of partitions within the dataset."""
-        return len(self.images_per_partition)
+        return len(self.partition_labels)
 
     @staticmethod
     def initialize(

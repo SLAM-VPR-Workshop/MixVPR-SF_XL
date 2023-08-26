@@ -24,16 +24,16 @@ class MSLS(Dataset):
         self.input_transform = input_transform
 
         # hard coded reference image names, this avoids the hassle of listing them at each epoch.
-        self.dbImages = np.load("../datasets/msls_val/msls_val_dbImages.npy")
+        self.dbImages = np.load("datasets/msls_val/msls_val_dbImages.npy")
 
         # hard coded query image names.
-        self.qImages = np.load("../datasets/msls_val/msls_val_qImages.npy")
+        self.qImages = np.load("datasets/msls_val/msls_val_qImages.npy")
 
         # hard coded index of query images
-        self.qIdx = np.load("../datasets/msls_val/msls_val_qIdx.npy")
+        self.qIdx = np.load("datasets/msls_val/msls_val_qIdx.npy")
 
         # hard coded groundtruth (correspondence between each query and its matches)
-        self.pIdx = np.load("../datasets/msls_val/msls_val_pIdx.npy", allow_pickle=True)
+        self.pIdx = np.load("datasets/msls_val/msls_val_pIdx.npy", allow_pickle=True)
 
         # concatenate reference images then query images so that we can use only one dataloader
         self.images = np.concatenate((self.dbImages, self.qImages[self.qIdx]))
