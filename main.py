@@ -257,7 +257,7 @@ if __name__ == "__main__":
     pl.utilities.seed.seed_everything(seed=190223, workers=True)
 
     datamodule = SFXLDataModule(
-        batch_size=120,
+        batch_size=32,
         img_per_place=4,
         min_img_per_place=4,
         shuffle_all=False,  # shuffle all images or keep shuffling in-city only

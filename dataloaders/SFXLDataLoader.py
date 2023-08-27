@@ -66,6 +66,7 @@ class SFXLDataModule(pl.LightningDataModule):
             "drop_last": False,
             "pin_memory": True,
             "shuffle": self.shuffle_all,
+            "prefetch_factor": 3,
         }
 
         self.valid_loader_config = {
